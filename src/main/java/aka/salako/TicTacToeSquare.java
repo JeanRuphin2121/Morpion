@@ -1,8 +1,6 @@
 package aka.salako;
 
-import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -10,28 +8,19 @@ import javafx.scene.Cursor;
 import javafx.scene.control.TextField;
 import javafx.scene.text.Font;
 
-import java.util.Objects;
-
-
 public class TicTacToeSquare extends TextField {
 
     private static TicTacToeModel model = TicTacToeModel.getInstance();
 
     private ObjectProperty<Owner> ownerProperty = new SimpleObjectProperty<>(Owner.NONE);
 
-    private BooleanProperty winnerProperty = new SimpleBooleanProperty(false);
-
     public ObjectProperty<Owner> ownerProperty() {
-        if (Objects.equals(model.turnProperty().toString(), new SimpleObjectProperty<>(Owner.FIRST).toString())) {
-            ownerProperty = new SimpleObjectProperty<>(Owner.FIRST);
-        }else {
-            ownerProperty = new SimpleObjectProperty<>(Owner.SECOND);
+        if (model.turnProperty().getValue() == Owner.FIRST) {
+            ownerProperty.setValue(Owner.FIRST);
+        } else {
+            ownerProperty.setValue(Owner.SECOND);
         }
         return ownerProperty;
-    }
-
-    public BooleanProperty colorProperty() {
-        return null;
     }
 
     public TicTacToeSquare(int row, int column) {
@@ -66,21 +55,15 @@ public class TicTacToeSquare extends TextField {
             this.setStyle("-fx-background-color: WHITE");
         });
 
-        model.winningBoard[row][column].addListener((observable, oldValue, newValue) -> {
+        model.getWinningSquare(row, column).addListener((observable, oldValue, newValue) -> {
             if (newValue) {
                 enlargeSquare();
             }
         });
     }
-    private void enlargeSquare() {
-        for (int row = 0; row < TicTacToeModel.BOARD_HEIGHT; row++) {
-            for (int col = 0; col < TicTacToeModel.BOARD_WIDTH; col++) {
-                if (model.getWinningSquare(row, col).get()) {
-                    this.setFont(Font.font("System", 80));
-                    this.setPadding(new Insets(-10, 0, -10, 0));
-                }
-            }
-        }
-    }
 
+    private void enlargeSquare() {
+        this.setFont(Font.font("System", 80));
+        this.setPadding(new Insets(-10, 0, -10, 0));
+    }
 }

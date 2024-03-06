@@ -36,7 +36,7 @@ public class TicTacToeModel {
     /**
     * Positions gagnantes.
     */
-    final BooleanProperty[][] winningBoard;
+     final BooleanProperty[][] winningBoard;
 
 
     private final IntegerProperty xCount = new SimpleIntegerProperty(0);
@@ -92,7 +92,7 @@ public class TicTacToeModel {
         msg.set("");
         for (int i = 0; i < BOARD_HEIGHT; i++) {
             for (int j = 0; j < BOARD_WIDTH; j++) {
-                board[i][j].setValue(Owner.NONE);
+                getSquare(i,j).setValue(Owner.NONE);
                 winningBoard[i][j].set(false);
             }
         }
@@ -108,14 +108,15 @@ public class TicTacToeModel {
     }
 
     public final ObjectProperty<Owner> getSquare(int row, int column) {
+        ObjectProperty<Owner> square = null;
 
-        ObjectProperty<Owner> Square = null;
-        if (validSquare(row, column)){
-            Square = board[row][column];
+        if (validSquare(row, column)) {
+            square = board[row][column];
         }
-        return Square;
 
+        return square;
     }
+
 
     public final BooleanProperty getWinningSquare(int row, int column) {
         BooleanProperty winningSquare = null;
@@ -131,7 +132,6 @@ public class TicTacToeModel {
     /**
     * Cette fonction ne doit donner le bon résultat que si le jeu
     * est terminé. L’affichage peut être caché avant la fin du jeu.
-    *
     * @return résultat du jeu sous forme de texte
     */
     SimpleStringProperty msg=new SimpleStringProperty("");
@@ -171,7 +171,7 @@ public class TicTacToeModel {
     */
     public void play(int row, int column) {
         if (legalMove(row, column).getValue()) {
-            board[row][column].setValue(turn.getValue());
+            getSquare(row,column).setValue(turn.getValue());
 
             xCount.bind(getScore(Owner.FIRST));
             oCount.bind(getScore(Owner.SECOND));
@@ -185,7 +185,6 @@ public class TicTacToeModel {
                 nextPlayer();
             }
 
-            // Appeler getEndOfGameMessage() pour mettre à jour le message
             getEndOfGameMessage();
         }
     }
@@ -197,7 +196,7 @@ public class TicTacToeModel {
     * c’est-à-dire la case est libre et le jeu n’est pas terminé
     */
     public BooleanBinding legalMove(int row, int column) {
-        return Bindings.createBooleanBinding(()-> board[row][column].getValue().equals(Owner.NONE) && !(gameOver().getValue()));
+        return Bindings.createBooleanBinding(()-> getSquare(row, column).getValue().equals(Owner.NONE) && !(gameOver().getValue()));
     }
     public NumberExpression getScore(Owner owner) {
         Observable[] dependencies = new Observable[BOARD_HEIGHT * BOARD_WIDTH];
@@ -206,7 +205,7 @@ public class TicTacToeModel {
 
         for (int i = 0; i < BOARD_HEIGHT; i++) {
             for (int j = 0; j < BOARD_WIDTH; j++) {
-                dependencies[index++] = board[i][j];
+                dependencies[index++] = getSquare(i,j);
             }
         }
 
@@ -216,7 +215,7 @@ public class TicTacToeModel {
 
             for (int i = 0; i < BOARD_HEIGHT; i++) {
                 for (int j = 0; j < BOARD_WIDTH; j++) {
-                    if (board[i][j].get() == owner) {
+                    if (getSquare(i,j).get() == owner) {
                         count++;
                     }
                 }
@@ -246,7 +245,7 @@ public class TicTacToeModel {
             int c = 0;
             for (int i = 0; i < BOARD_HEIGHT; i++) {
                 for (int j = 0; j < BOARD_WIDTH; j++) {
-                    if (!board[i][j].getValue().equals(Owner.NONE)) {
+                    if (!getSquare(i,j).getValue().equals(Owner.NONE)) {
                         c++;
                     }
                     if (c == BOARD_WIDTH * BOARD_HEIGHT) {
@@ -266,7 +265,7 @@ public class TicTacToeModel {
         int countRow = 0;
         int winningRow = -1;
         for (int i = 0; i < BOARD_WIDTH; i++) {
-            if (board[row][i].getValue() == turn.getValue()) {
+            if (getSquare(row,i).getValue() == turn.getValue()) {
                 countRow++;
                 if (countRow == WINNING_COUNT) {
                     winningRow = row;
@@ -290,7 +289,7 @@ public class TicTacToeModel {
         int countCol = 0;
         int winningCol = -1;
         for (int i = 0; i < BOARD_HEIGHT; i++) {
-            if (board[i][column].getValue() == turn.getValue()) {
+            if (getSquare(i,column).getValue() == turn.getValue()) {
                 countCol++;
                 if (countCol == WINNING_COUNT) {
                     winningCol = column;
@@ -315,7 +314,7 @@ public class TicTacToeModel {
             int countDiag = 0;
             int winningDiagRow = -1;
             for (int i = 0; i < BOARD_HEIGHT; i++) {
-                if (board[i][i].getValue() == turn.getValue()) {
+                if (getSquare(i,i).getValue() == turn.getValue()) {
                     countDiag++;
                     if (countDiag == WINNING_COUNT) {
                         winningDiagRow = i;
@@ -342,7 +341,7 @@ public class TicTacToeModel {
             int countAntiDiag = 0;
             int winningAntiDiagRow = -1;
             for (int i = 0; i < BOARD_HEIGHT; i++) {
-                if (board[i][BOARD_WIDTH - 1 - i].getValue() == turn.getValue()) {
+                if (getSquare(i,BOARD_WIDTH - 1 - i).getValue() == turn.getValue()) {
                     countAntiDiag++;
                     if (countAntiDiag == WINNING_COUNT) {
                         winningAntiDiagRow = i;
@@ -359,7 +358,6 @@ public class TicTacToeModel {
                 System.out.println("Anti-Diagonal win!");
                 System.out.println(winner);
                 getEndOfGameMessage();
-                return;
             }
         }
 
@@ -371,13 +369,8 @@ public class TicTacToeModel {
             int rowIndex = startRow + i * rowIncrement;
             int colIndex = startColumn + i * colIncrement;
 
-            // Vérifier que les indices restent dans les limites du tableau
             if (validSquare(rowIndex, colIndex)) {
                 winningBoard[rowIndex][colIndex].set(true);
-            } else {
-                // Gérer le cas où les indices sortent des limites du tableau
-                System.out.println("Erreur : Indices hors limites - rowIndex=" + rowIndex + ", colIndex=" + colIndex);
-                // Vous pouvez choisir de ne rien faire ou de gérer cette situation d'une autre manière
             }
         }
     }

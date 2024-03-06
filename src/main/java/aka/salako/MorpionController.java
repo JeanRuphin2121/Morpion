@@ -1,6 +1,5 @@
 package aka.salako;
 
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
@@ -32,7 +31,7 @@ public class MorpionController implements Initializable {
     static GridPane grid;
 
     @FXML
-    void restart(ActionEvent event) {
+    void restart() {
         plateau.getChildren().remove(grid);
         TicTacToeModel.getInstance().restart();
         this.initialize(null, null);
