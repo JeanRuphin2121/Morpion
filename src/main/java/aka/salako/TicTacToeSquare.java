@@ -9,7 +9,6 @@ import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.control.TextField;
 import javafx.scene.text.Font;
-import javafx.scene.text.TextAlignment;
 
 import java.util.Objects;
 
@@ -39,39 +38,49 @@ public class TicTacToeSquare extends TextField {
 
         this.setEditable(false);
         this.setPrefWidth(99.9);
-        this.setFont(Font.font("System", 80));
-        this.setAlignment(Pos.CENTER);
-        this.setPadding(new Insets(-10,0,-10,0));
-        this.setOnMouseClicked(mouseEvent ->{
+        this.setFont(Font.font("System", 50));
 
+        this.setAlignment(Pos.CENTER);
+        this.setPadding(new Insets(13,0,13,0));
+        this.setOnMouseClicked(mouseEvent -> {
             if (model.legalMove(row, column).getValue()) {
-                if (ownerProperty().getValue()==Owner.FIRST) {
+                if (ownerProperty().getValue() == Owner.FIRST) {
                     this.setText("✕");
                 } else {
                     this.setText("○");
                 }
                 model.play(row, column);
             }
-            if (model.winningBoard[row][column].getValue()) {
-                this.setFont(Font.font("Verdana", 120));
-            }
-
         });
         this.setOnMouseEntered(mouseEvent ->{
             if (model.legalMove(row, column).getValue()){
-                this.setCursor(Cursor.HAND); // Définir le curseur de la main
+                this.setCursor(Cursor.HAND);
                 this.setStyle("-fx-background-color: GREEN");
             }
             else{
-                this.setCursor(Cursor.HAND); // Définir le curseur de la main
+                this.setCursor(Cursor.HAND);
                 this.setStyle("-fx-background-color: RED");
             }
         });
         this.setOnMouseExited(mouseEvent -> {
-            this.setStyle("-fx-background-color: NONE");
+            this.setStyle("-fx-background-color: WHITE");
         });
 
-
+        model.winningBoard[row][column].addListener((observable, oldValue, newValue) -> {
+            if (newValue) {
+                enlargeSquare();
+            }
+        });
+    }
+    private void enlargeSquare() {
+        for (int row = 0; row < TicTacToeModel.BOARD_HEIGHT; row++) {
+            for (int col = 0; col < TicTacToeModel.BOARD_WIDTH; col++) {
+                if (model.getWinningSquare(row, col).get()) {
+                    this.setFont(Font.font("System", 80));
+                    this.setPadding(new Insets(-10, 0, -10, 0));
+                }
+            }
+        }
     }
 
 }

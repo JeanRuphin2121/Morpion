@@ -68,10 +68,7 @@ public class MorpionController implements Initializable {
     }
 
     private void updateUIProperties(TicTacToeModel ticTacToeModel) {
-        // Exemple de mise à jour de la propriété 'text' de la Label 'victoire'
         victoire.textProperty().bind(ticTacToeModel.getEndOfGameMessage());
-
-        // Mise à jour des compteurs
         labelXCount.textProperty().bind(ticTacToeModel.getXCount().asString("%d case pour ✕ "));
         labelOCount.textProperty().bind(ticTacToeModel.getOCount().asString("%d case pour ○ "));
         labelEmptyCount.textProperty().bind(ticTacToeModel.getEmptyCount().asString("%d cases libres"));

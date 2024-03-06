@@ -1,15 +1,17 @@
 package aka.salako;
 
+import javafx.beans.Observable;
 import javafx.beans.binding.*;
 import javafx.beans.property.*;
+
 
 public class TicTacToeModel {
 
     /**
     * Taille du plateau de jeu (pour être extensible).
     */
-    public final static int BOARD_WIDTH = 4;
-    public final static int BOARD_HEIGHT = 4;
+    public final static int BOARD_WIDTH = 3;
+    public final static int BOARD_HEIGHT = 3;
 
     /**
     * Nombre de pièces alignés pour gagner (idem).
@@ -24,7 +26,7 @@ public class TicTacToeModel {
     /**
     * Vainqueur du jeu, NONE si pas de vainqueur.
     */
-    private final ObjectProperty<Owner> winner = new SimpleObjectProperty<>(Owner.NONE);
+    private final ObjectProperty<Owner>  winner = new SimpleObjectProperty<>(Owner.NONE);
 
     /**
     * Plateau de jeu.
@@ -85,18 +87,21 @@ public class TicTacToeModel {
     }
 
     public void restart() {
-
         turn.setValue(Owner.FIRST);
         winner.setValue(Owner.NONE);
-
-        for (int i = 0; i<BOARD_HEIGHT; i++){
-            for(int j = 0; j<BOARD_WIDTH; j++){
-                board[i][j] = new SimpleObjectProperty<>(Owner.NONE);
-                winningBoard[i][j] = new SimpleBooleanProperty(false);
+        msg.set("");
+        for (int i = 0; i < BOARD_HEIGHT; i++) {
+            for (int j = 0; j < BOARD_WIDTH; j++) {
+                board[i][j].setValue(Owner.NONE);
+                winningBoard[i][j].set(false);
             }
         }
 
+        xCount.bind(getScore(Owner.FIRST));
+        oCount.bind(getScore(Owner.SECOND));
+        emptyCount.set(BOARD_HEIGHT * BOARD_WIDTH);
     }
+
 
     public final ObjectProperty<Owner> turnProperty() {
         return turn;
@@ -113,14 +118,15 @@ public class TicTacToeModel {
     }
 
     public final BooleanProperty getWinningSquare(int row, int column) {
-
         BooleanProperty winningSquare = null;
-        if (validSquare(row, column)){
+
+        if (validSquare(row, column)) {
             winningSquare = winningBoard[row][column];
         }
-        return winningSquare;
 
+        return winningSquare;
     }
+
 
     /**
     * Cette fonction ne doit donner le bon résultat que si le jeu
@@ -128,23 +134,21 @@ public class TicTacToeModel {
     *
     * @return résultat du jeu sous forme de texte
     */
+    SimpleStringProperty msg=new SimpleStringProperty("");
+
     public final StringExpression getEndOfGameMessage() {
-        SimpleStringProperty msg=new SimpleStringProperty("");
-
-        if (winner.getValue().equals(Owner.FIRST)){
+        Owner value = winner.getValue();
+        if (value == Owner.FIRST) {
             msg.set("Game Over. Le gagnant est le premier joueur.");
-        }
-        else if (winner.getValue().equals(Owner.SECOND)){
+        } else if (value == Owner.SECOND) {
             msg.set("Game Over. Le gagnant est le deuxième joueur.");
+        } else if (value == Owner.NONE && emptyCount.get() == 0) {
+            msg.set("Match nul. Aucun joueur n'a gagné.");
         }
-        else{
-           msg.set("Match Nul");
-        }
-
 
         return msg;
-
     }
+
 
     public void setWinner(Owner winner) {
         this.winner.setValue(winner);
@@ -152,12 +156,7 @@ public class TicTacToeModel {
 
     public boolean validSquare(int row, int column) {
 
-        if (row>=0 && column>=0 && row<BOARD_HEIGHT && column<BOARD_WIDTH){
-            return true;
-        }
-        else{
-            return false;
-        }
+        return row >= 0 && column >= 0 && row < BOARD_HEIGHT && column < BOARD_WIDTH;
 
     }
 
@@ -171,43 +170,50 @@ public class TicTacToeModel {
     * Jouer dans la case (row, column) quand c’est possible.
     */
     public void play(int row, int column) {
-
-        if(legalMove(row, column).getValue()){
+        if (legalMove(row, column).getValue()) {
             board[row][column].setValue(turn.getValue());
 
-            // Mise à jour des compteurs
-            if (turn.getValue() == Owner.FIRST) {
-                xCount.set(xCount.get() + 1);
-            } else {
-                oCount.set(oCount.get() + 1);
-            }
+            xCount.bind(getScore(Owner.FIRST));
+            oCount.bind(getScore(Owner.SECOND));
             emptyCount.set(emptyCount.get() - 1);
+
+            System.out.println("Empty Count: " + emptyCount.get());
 
             checkWinConditions(row, column);
 
             if (!gameOver().getValue()) {
                 nextPlayer();
             }
-        }
 
+            // Appeler getEndOfGameMessage() pour mettre à jour le message
+            getEndOfGameMessage();
+        }
     }
+
+
 
     /**
     * @return true s’il est possible de jouer dans la case
     * c’est-à-dire la case est libre et le jeu n’est pas terminé
     */
     public BooleanBinding legalMove(int row, int column) {
-        return Bindings.createBooleanBinding(
-                ()->{
-                    return board[row][column].getValue().equals(Owner.NONE) && !(gameOver().getValue());
-                });
-
+        return Bindings.createBooleanBinding(()-> board[row][column].getValue().equals(Owner.NONE) && !(gameOver().getValue()));
     }
     public NumberExpression getScore(Owner owner) {
-        IntegerBinding score = Bindings.createIntegerBinding(() -> {
+        Observable[] dependencies = new Observable[BOARD_HEIGHT * BOARD_WIDTH];
+
+        int index = 0;
+
+        for (int i = 0; i < BOARD_HEIGHT; i++) {
+            for (int j = 0; j < BOARD_WIDTH; j++) {
+                dependencies[index++] = board[i][j];
+            }
+        }
+
+        IntegerBinding score;
+        score = Bindings.createIntegerBinding(() -> {
             int count = 0;
 
-            // Parcourez le plateau de jeu pour compter le nombre de cases possédées par le joueur spécifié.
             for (int i = 0; i < BOARD_HEIGHT; i++) {
                 for (int j = 0; j < BOARD_WIDTH; j++) {
                     if (board[i][j].get() == owner) {
@@ -217,10 +223,11 @@ public class TicTacToeModel {
             }
 
             return count;
-        }, board[0][0], board[0][1], /* ... (add all individual board elements as dependencies) */ board[BOARD_HEIGHT-1][BOARD_WIDTH-1]);
+        }, dependencies);
 
         return score;
     }
+
 
 
 
@@ -229,76 +236,157 @@ public class TicTacToeModel {
     * (soit un joueur a gagné, soit il n’y a plus de cases à jouer)
     */
     public BooleanBinding gameOver() {
+        return Bindings.createBooleanBinding(() -> {
+            boolean win = !winner.getValue().equals(Owner.NONE);
 
-        return Bindings.createBooleanBinding(
-                ()->{
-                    boolean win = false;
-                    boolean notempty_case = false;
-                    if (!winner.getValue().equals(Owner.NONE)){
-                        win = true;
+            if (win) {
+                return true;
+            }
+
+            int c = 0;
+            for (int i = 0; i < BOARD_HEIGHT; i++) {
+                for (int j = 0; j < BOARD_WIDTH; j++) {
+                    if (!board[i][j].getValue().equals(Owner.NONE)) {
+                        c++;
                     }
-                    int c = 0;
-                    for (int i = 0; i < BOARD_HEIGHT; i++) {
-                        for (int j = 0; j < BOARD_WIDTH; j++) {
-                            if (!(board[i][j].getValue().equals(Owner.NONE))){
-                                c++;
-                            }
-                            if (c == BOARD_WIDTH*BOARD_HEIGHT){
-                                notempty_case = true;
-                                break;
-                            }
-                        }
+                    if (c == BOARD_WIDTH * BOARD_HEIGHT) {
+                        return true;
                     }
-                    return win||notempty_case;
-                });
+                }
+            }
+
+            return false;
+        }, winner);
     }
+
 
 
     private void checkWinConditions(int row, int column) {
-        //check col
-        for(int i = 0; i < BOARD_WIDTH; i++){
-            if(board[row][i].getValue() != turn.getValue())
-                break;
-            if(i == BOARD_WIDTH-1){
-                setWinner(turn.getValue());
-                getEndOfGameMessage();
-            }
-        }
-
-        //check row
-        for(int i = 0; i < BOARD_HEIGHT; i++){
-            if(board[i][column].getValue() != turn.getValue())
-                break;
-            if(i == BOARD_HEIGHT-1){
-                setWinner(turn.getValue());
-                getEndOfGameMessage();
-            }
-        }
-
-        //check diag
-        if(row == column){
-            //we're on a diagonal
-            for(int i = 0; i < (BOARD_HEIGHT+BOARD_WIDTH)/2; i++){
-                if(board[i][i].getValue() != turn.getValue())
+        // check row
+        int countRow = 0;
+        int winningRow = -1;
+        for (int i = 0; i < BOARD_WIDTH; i++) {
+            if (board[row][i].getValue() == turn.getValue()) {
+                countRow++;
+                if (countRow == WINNING_COUNT) {
+                    winningRow = row;
                     break;
-                if(i == ((BOARD_HEIGHT+BOARD_WIDTH)/2)-1){
-                    setWinner(turn.getValue());
-                    getEndOfGameMessage();
+                }
+            } else {
+                countRow = 0;
+            }
+        }
+
+        if (winningRow != -1) {
+            markWinningPositions(winningRow, 0, 0, 1);
+            setWinner(turn.getValue());
+            System.out.println("Row win!");
+            System.out.println(winner);
+            getEndOfGameMessage();
+            return;
+        }
+
+        // check col
+        int countCol = 0;
+        int winningCol = -1;
+        for (int i = 0; i < BOARD_HEIGHT; i++) {
+            if (board[i][column].getValue() == turn.getValue()) {
+                countCol++;
+                if (countCol == WINNING_COUNT) {
+                    winningCol = column;
+                    break;
+                }
+            } else {
+                countCol = 0;
+            }
+        }
+
+        if (winningCol != -1) {
+            markWinningPositions(0, winningCol, 1, 0);
+            setWinner(turn.getValue());
+            System.out.println("Column win!");
+            System.out.println(winner);
+            getEndOfGameMessage();
+            return;
+        }
+
+        // check diag
+        if (row == column) {
+            int countDiag = 0;
+            int winningDiagRow = -1;
+            for (int i = 0; i < BOARD_HEIGHT; i++) {
+                if (board[i][i].getValue() == turn.getValue()) {
+                    countDiag++;
+                    if (countDiag == WINNING_COUNT) {
+                        winningDiagRow = i;
+                        break;
+                    }
+                } else {
+                    countDiag = 0;
                 }
             }
+
+            if (winningDiagRow != -1) {
+                markWinningPositions(0, 0, 1, 1);
+                setWinner(turn.getValue());
+                System.out.println("Diagonal win!");
+                System.out.println(winner);
+                getEndOfGameMessage();
+                return;
+            }
         }
 
-        //check anti diag
-        if(row + column == ((BOARD_HEIGHT+BOARD_WIDTH)/2) - 1){
-            for(int i = 0; i < ((BOARD_HEIGHT+BOARD_WIDTH)/2); i++){
-                if(board[i][(((BOARD_HEIGHT+BOARD_WIDTH)/2)-1)-i].getValue() != turn.getValue())
-                    break;
-                if(i == ((BOARD_HEIGHT+BOARD_WIDTH)/2)-1){
-                    setWinner(turn.getValue());
-                    getEndOfGameMessage();
+
+        // check anti diag
+        if (row + column == BOARD_WIDTH - 1) {
+            int countAntiDiag = 0;
+            int winningAntiDiagRow = -1;
+            for (int i = 0; i < BOARD_HEIGHT; i++) {
+                if (board[i][BOARD_WIDTH - 1 - i].getValue() == turn.getValue()) {
+                    countAntiDiag++;
+                    if (countAntiDiag == WINNING_COUNT) {
+                        winningAntiDiagRow = i;
+                        break;
+                    }
+                } else {
+                    countAntiDiag = 0;
                 }
+            }
+
+            if (winningAntiDiagRow != -1) {
+                markWinningPositions(0, BOARD_WIDTH - 1, 1, -1);
+                setWinner(turn.getValue());
+                System.out.println("Anti-Diagonal win!");
+                System.out.println(winner);
+                getEndOfGameMessage();
+                return;
             }
         }
 
     }
+
+
+    private void markWinningPositions(int startRow, int startColumn, int rowIncrement, int colIncrement) {
+        for (int i = 0; i < WINNING_COUNT; i++) {
+            int rowIndex = startRow + i * rowIncrement;
+            int colIndex = startColumn + i * colIncrement;
+
+            // Vérifier que les indices restent dans les limites du tableau
+            if (validSquare(rowIndex, colIndex)) {
+                winningBoard[rowIndex][colIndex].set(true);
+            } else {
+                // Gérer le cas où les indices sortent des limites du tableau
+                System.out.println("Erreur : Indices hors limites - rowIndex=" + rowIndex + ", colIndex=" + colIndex);
+                // Vous pouvez choisir de ne rien faire ou de gérer cette situation d'une autre manière
+            }
+        }
+    }
+
+
+
+
+
+
+
+
 }
